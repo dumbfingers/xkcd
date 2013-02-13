@@ -31,7 +31,7 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		new fetchRSS().execute(Constants.xKCD_RSS_URL);
+		new fetchRSS().execute(Constants.XKCD_RSS_URL);
 	}
 	
 	@Override
@@ -69,7 +69,7 @@ public class MainActivity extends Activity {
 				try {
 					f = downloadUrl(params[0]);
 					InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-					XMLParser parser = new XMLParser(MainActivity.this);
+					XMLParser parser = new XMLParser();
 					parser.parse(inputStream);
 				} catch (IOException e) {
 					e.printStackTrace();
