@@ -8,30 +8,52 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.ParseException;
-
-import org.xmlpull.v1.XmlPullParserException;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.LinearLayout.LayoutParams;
 
 import com.yeyaxi.android.xkcd.Uitilities.Constants;
 
 public class MainActivity extends Activity {
 
+	private static final String TAG = "MainActivity";
+	LinearLayout mGalleryLayout;
+	private int sampleSize = 500;
+	private int sampleFrameSize = 530; // Frame Border Thickness = 30
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		new fetchRSS().execute(Constants.XKCD_RSS_URL);
+		mGalleryLayout = (LinearLayout)findViewById(R.id.galleryLayout);
+		
+		String ExternalStorageDirectoryPath = Environment.getExternalStorageDirectory().getAbsolutePath();
+		        
+		String testPath = ExternalStorageDirectoryPath + "/Download/";
+		
+		File targetDirector = new File(testPath);
+
+		File[] files = targetDirector.listFiles();
+		for (File file : files){
+			mGalleryLayout.addView(insertPhoto(file.getAbsolutePath()));
+		} 
+		// Begin to parse the RSS
+//		new fetchRSS().execute(Constants.XKCD_RSS_URL);
+		new fetchRSS().execute(Constants.XKCD_JSON_URL);
 	}
 	
 	@Override
@@ -58,6 +80,57 @@ public class MainActivity extends Activity {
 	protected void onDestroy() {
 		super.onDestroy();
 	}
+	
+	private View insertPhoto(String path){
+		Bitmap bm = decodeSampledBitmapFromUri(path, sampleSize, sampleSize);
+
+		LinearLayout layout = new LinearLayout(getApplicationContext());
+		layout.setLayoutParams(new LayoutParams(sampleFrameSize, sampleFrameSize));
+		layout.setGravity(Gravity.CENTER);
+
+		ImageView imageView = new ImageView(getApplicationContext());
+		imageView.setLayoutParams(new LayoutParams(sampleSize, sampleSize));
+		imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+		imageView.setImageBitmap(bm);
+
+		layout.addView(imageView);
+		return layout;
+	}
+	
+	public Bitmap decodeSampledBitmapFromUri(String path, int reqWidth, int reqHeight) {
+		Bitmap bm = null;
+
+		// First decode with inJustDecodeBounds=true to check dimensions
+		final BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inJustDecodeBounds = true;
+		BitmapFactory.decodeFile(path, options);
+
+		// Calculate inSampleSize
+		options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+
+		// Decode bitmap with inSampleSize set
+		options.inJustDecodeBounds = false;
+		bm = BitmapFactory.decodeFile(path, options); 
+
+		return bm;  
+	}
+	
+	public int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+		// Raw height and width of image
+		final int height = options.outHeight;
+		final int width = options.outWidth;
+		int inSampleSize = 1;
+
+		if (height > reqHeight || width > reqWidth) {
+			if (width > height) {
+				inSampleSize = Math.round((float)height / (float)reqHeight);   
+			} else {
+				inSampleSize = Math.round((float)width / (float)reqWidth);   
+			}   
+		}
+
+		return inSampleSize;   
+	}
 
 	private class fetchRSS extends AsyncTask<String, Void, File> {
 
@@ -69,17 +142,18 @@ public class MainActivity extends Activity {
 				try {
 					f = downloadUrl(params[0]);
 					InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-					XMLParser parser = new XMLParser();
-					parser.parse(inputStream);
+//					XMLParser parser = new XMLParser();
+//					parser.parse(inputStream);
+					new JsonParser().readJsonStream(inputStream);
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e("MainActivity", "Exception while downloading URL contents.");
-				} catch (XmlPullParserException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (ParseException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+//				} catch (XmlPullParserException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				} catch (ParseException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
 				}
 			} else {
 				return null;

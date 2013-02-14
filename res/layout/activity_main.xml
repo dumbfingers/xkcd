@@ -4,11 +4,20 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity" >
 
-    <Gallery
-        android:id="@+id/gallery"
+    <HorizontalScrollView
+        android:id="@+id/horizontalScrollView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true" />
+        android:layout_centerVertical="true" >
+
+        <LinearLayout
+            android:id="@+id/galleryLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal" >
+
+        </LinearLayout>
+    </HorizontalScrollView>
 
 </RelativeLayout>
