@@ -8,7 +8,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
 
+import android.R.integer;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -31,9 +34,16 @@ import com.yeyaxi.android.xkcd.Uitilities.Constants;
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
+	private static final int MAX_NUM_OF_LOADING = 5;
 	LinearLayout mGalleryLayout;
+	// The Thumbnail size of the gallery view, will auto-crop the image to square
 	private int sampleSize = 500;
-	private int sampleFrameSize = 530; // Frame Border Thickness = 30
+	// Frame Border Thickness = 30
+	private int sampleFrameSize = 530; 
+	// Array to hold the comics' info
+	private ArrayList<HashMap<String, String>> comicList;
+	private String[] urls;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -53,7 +63,8 @@ public class MainActivity extends Activity {
 		} 
 		// Begin to parse the RSS
 //		new fetchRSS().execute(Constants.XKCD_RSS_URL);
-		new fetchRSS().execute(Constants.XKCD_JSON_URL);
+		comicList = new ArrayList<HashMap<String,String>>();
+		new FetchComicData().execute(Constants.XKCD_JSON_URL);
 	}
 	
 	@Override
@@ -132,37 +143,53 @@ public class MainActivity extends Activity {
 		return inSampleSize;   
 	}
 
-	private class fetchRSS extends AsyncTask<String, Void, File> {
-
+	private class FetchComicData extends AsyncTask<String, Void, File> {
+//		boolean isMultiple = false;
 		@Override
 		protected File doInBackground(String... params) {
 			File f = null;
+			int count = params.length;
 			
-			if (isNetworkConnected()) {				
-				try {
-					f = downloadUrl(params[0]);
-					InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-//					XMLParser parser = new XMLParser();
-//					parser.parse(inputStream);
-					new JsonParser().readJsonStream(inputStream);
-				} catch (IOException e) {
-					e.printStackTrace();
-					Log.e("MainActivity", "Exception while downloading URL contents.");
-//				} catch (XmlPullParserException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				} catch (ParseException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
+//			if (count == 1) {
+//				isMultiple = false;
+				
+				if (isNetworkConnected()) {				
+					try {
+						f = downloadUrl(params[0]);
+						InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+						comicList.add(new JsonParser().readJsonStream(inputStream));
+					} catch (IOException e) {
+						e.printStackTrace();
+						Log.e("MainActivity", "Exception while downloading URL contents.");
+					}
+				} else {
+					return null;
 				}
-			} else {
-				return null;
-			}
+				
+//			} else {
+//				if (isNetworkConnected()) {				
+//					try {
+//						for (int i = 0; i < count; i++) {
+//							f = downloadUrl(params[i]);
+//							InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+//							comicList.add(new JsonParser().readJsonStream(inputStream));
+//						}
+//						
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//						Log.e("MainActivity", "Exception while downloading multiple URL contents.");
+//					}
+//				} else {
+//					return null;
+//				}
+//			}
 			return f;
 		}
 		
 		protected void onPostExecute(File file) {
-			
+//			if (!isMultiple) {
+//				urls = buildURLsOfJsonToArrayList(Long.getLong(comicList.get(0).get("num")));
+//			}
 		}
 		
 	}
@@ -185,10 +212,10 @@ public class MainActivity extends Activity {
         InputStream stream = conn.getInputStream();     
 //        File cacheDir = getStorageDir(getApplicationContext());
         File cacheDir;
-        if (getExternalCacheDir() != null) {
-        	cacheDir = getExternalCacheDir(); // Priorly use External Cache
+        if (getExternalFilesDir(null) != null) {
+        	cacheDir = getExternalFilesDir(null); // Priorly use External Cache
         } else {
-        	cacheDir = getCacheDir();// Use Internal cache instead if external one is not available
+        	cacheDir = getFilesDir();// Use Internal cache instead if external one is not available
         }
         File cache = new File(cacheDir, Constants.CACHE_FILE);
         FileOutputStream fos = new FileOutputStream(cache);
@@ -253,6 +280,25 @@ public class MainActivity extends Activity {
 	        Log.e("XML_CreateFile", "Directory not created");
 	    }
 	    return file;
+	}
+	
+	/**
+	 * This method is used to generate URLs for accessing Json data of archived xkcd comics.
+	 * @param latestNumberOfURL is the latest number of comics, which is used to build the JSON URLs
+	 * @return ArrayList contains the URLs of Json
+	 */
+	public String[] buildURLsOfJsonToArrayList (long latestNumberOfURL) {
+		String url = null;
+//		ArrayList<String> result = new ArrayList<String>();
+//		String[] result = new String[(int)latestNumberOfURL];
+		String[] result = new String[MAX_NUM_OF_LOADING];
+//		for (long i = (latestNumberOfURL - 1); i >= 0; i--) {
+		for (long i = MAX_NUM_OF_LOADING; i >= 0; i--) {
+			url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
+			result[(int) i] = url;
+		}
+		return result;
+		
 	}
 	
 	@Override

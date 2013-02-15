@@ -23,7 +23,7 @@ public class JsonParser {
 
 	}
 
-	public HashMap<String, String> readInfoToHashMap (JsonReader reader) throws IOException {
+	private HashMap<String, String> readInfoToHashMap (JsonReader reader) throws IOException {
 		
 		long num = 0;
 		String alt = null;
