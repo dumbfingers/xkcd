@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import android.R.integer;
+import android.R.string;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -43,9 +44,9 @@ public class MainActivity extends Activity {
 	private int sampleFrameSize = 530; 
 	// Array to hold the comics' info
 	private ArrayList<HashMap<String, String>> comicList;
-	private HashMap<String, String> singleComic;
-	private String[] urls;
-	
+//	private HashMap<String, String> singleComic;
+//	private String[] urls;
+	private long latestNum;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -66,7 +67,7 @@ public class MainActivity extends Activity {
 		// Begin to parse the RSS
 //		new fetchRSS().execute(Constants.XKCD_RSS_URL);
 		comicList = new ArrayList<HashMap<String,String>>();
-		singleComic = new HashMap<String, String>();
+//		singleComic = new HashMap<String, String>();
 		new FetchComicData().execute(Constants.XKCD_JSON_URL);
 		
 	}
@@ -198,32 +199,55 @@ public class MainActivity extends Activity {
 	}
 
 	private class FetchComicData extends AsyncTask<String, Void, File> {
-//		boolean isMultiple = false;
+		
+		boolean isMultiple = false;
 		@Override
 		protected File doInBackground(String... params) {
 			File f = null;
 			int count = params.length;
-			
-//			if (count == 1) {
-//				isMultiple = false;
-				
-				if (isNetworkConnected()) {				
-					try {
-						f = downloadUrl(params[0], Constants.CACHE_FILE);
+
+			if (isNetworkConnected()) {				
+				try {
+					if (params[0].equals(Constants.XKCD_JSON_URL)) {
+						isMultiple = false;
+						f = downloadUrl(params[0], Constants.CACHE_FILE);					
 						InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
 						comicList.add(new JsonParser().readJsonStream(inputStream));
-					} catch (IOException e) {
-						e.printStackTrace();
-						Log.e("MainActivity", "Exception while downloading URL contents.");
+						latestNum = Long.parseLong(comicList.get(0).get("num"));
+						comicList.clear();
+					} else {
+						for (int i = 0; i < count; i++) {
+							isMultiple = true;
+							f = downloadUrl(params[i], String.valueOf((latestNum - i)) + ".json");
+							InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+							comicList.add(i, new JsonParser().readJsonStream(inputStream));
+						}
 					}
-				} else {
-					return null;
+				} catch (IOException e) {
+					e.printStackTrace();
+					Log.e("MainActivity", "Exception while downloading URL contents.");
 				}
+			} else {
+				return null;
+			}
+
 			return f;
 		}
-		
+
 		protected void onPostExecute(File file) {
-			new FetchComicImage().execute(comicList.get(0).get("img"));
+
+			if (!isMultiple) {
+				String[] urlsOfJson = buildURLsOfJsonToArrayList(latestNum);
+				new FetchComicData().execute(urlsOfJson);
+			} else {
+				String[] urls = new String[MAX_NUM_OF_LOADING];
+				for (int i = 0; i < comicList.size(); i++) {
+					urls[i] = comicList.get(i).get("img");
+				}
+				if (urls.length > 0) {
+					new FetchComicImage().execute(urls);
+				}
+			}
 		}
 		
 	}
@@ -322,14 +346,14 @@ public class MainActivity extends Activity {
 	 * @return ArrayList contains the URLs of Json
 	 */
 	public String[] buildURLsOfJsonToArrayList (long latestNumberOfURL) {
-		String url = null;
+//		String url = null;
 //		ArrayList<String> result = new ArrayList<String>();
 //		String[] result = new String[(int)latestNumberOfURL];
 		String[] result = new String[MAX_NUM_OF_LOADING];
 //		for (long i = (latestNumberOfURL - 1); i >= 0; i--) {
-		for (long i = MAX_NUM_OF_LOADING; i >= 0; i--) {
-			url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
-			result[(int) i] = url;
+		for (long i = latestNumberOfURL; i > (latestNumberOfURL - MAX_NUM_OF_LOADING); i--) {
+			String url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
+			result[(int)(latestNumberOfURL - i)] = url;
 		}
 		return result;
 		
