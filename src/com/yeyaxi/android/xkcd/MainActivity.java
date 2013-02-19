@@ -7,13 +7,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import android.R.integer;
-import android.R.string;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -54,16 +51,6 @@ public class MainActivity extends Activity {
 		
 		mGalleryLayout = (LinearLayout)findViewById(R.id.galleryLayout);
 		
-//		String ExternalStorageDirectoryPath = Environment.getExternalStorageDirectory().getAbsolutePath();
-//		        
-//		String testPath = ExternalStorageDirectoryPath + "/Download/";
-//		
-//		File targetDirector = new File(testPath);
-//
-//		File[] files = targetDirector.listFiles();
-//		for (File file : files){
-//			mGalleryLayout.addView(insertPhoto(file.getAbsolutePath()));
-//		} 
 		// Begin to parse the RSS
 //		new fetchRSS().execute(Constants.XKCD_RSS_URL);
 		comicList = new ArrayList<HashMap<String,String>>();
@@ -98,12 +85,8 @@ public class MainActivity extends Activity {
 	}
 	
 	private View insertPhoto(Bitmap bm){
-//		Bitmap bm = decodeSampledBitmapFromUri(path, sampleSize, sampleSize);
-		
-//		Bitmap bm = decodeSampledBitmapFromUrl(path, sampleSize, sampleSize);
 
-
-		LinearLayout layout = new LinearLayout(getApplicationContext());
+		GalleryLayout layout = new GalleryLayout(getApplicationContext());
 		layout.setLayoutParams(new LayoutParams(sampleFrameSize, sampleFrameSize));
 		layout.setGravity(Gravity.CENTER);
 
@@ -115,24 +98,6 @@ public class MainActivity extends Activity {
 		layout.addView(imageView);
 		return layout;
 	}
-	
-//	public Bitmap decodeSampledBitmapFromUri(String path, int reqWidth, int reqHeight) {
-//		Bitmap bm = null;
-//
-//		// First decode with inJustDecodeBounds=true to check dimensions
-//		final BitmapFactory.Options options = new BitmapFactory.Options();
-//		options.inJustDecodeBounds = true;
-//		BitmapFactory.decodeFile(path, options);
-//
-//		// Calculate inSampleSize
-//		options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-//
-//		// Decode bitmap with inSampleSize set
-//		options.inJustDecodeBounds = false;
-//		bm = BitmapFactory.decodeFile(path, options); 
-//
-//		return bm;  
-//	}
 	
 	public Bitmap decodeSampledBitmapFromUrl(String urlString, String filename, int reqWidth, int reqHeight) {
 		Bitmap bm = null;
