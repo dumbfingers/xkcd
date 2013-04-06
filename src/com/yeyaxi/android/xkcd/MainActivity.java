@@ -23,6 +23,7 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -44,6 +45,8 @@ public class MainActivity extends Activity {
 //	private HashMap<String, String> singleComic;
 //	private String[] urls;
 	private long latestNum;
+	
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -55,7 +58,6 @@ public class MainActivity extends Activity {
 //		new fetchRSS().execute(Constants.XKCD_RSS_URL);
 		comicList = new ArrayList<HashMap<String,String>>();
 //		singleComic = new HashMap<String, String>();
-		new FetchComicData().execute(Constants.XKCD_JSON_URL);
 		
 	}
 	
@@ -329,6 +331,19 @@ public class MainActivity extends Activity {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    // Handle item selection
+	    switch (item.getItemId()) {
+	        case R.id.menu_fetch:
+	    		new FetchComicData().execute(Constants.XKCD_JSON_URL);
+	            return true;
+
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
 	}
 
 }
