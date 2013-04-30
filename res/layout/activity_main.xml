@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity" >
 
-    <HorizontalScrollView
+    <!-- <HorizontalScrollView
         android:id="@+id/horizontalScrollView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -19,6 +19,11 @@
             android:orientation="horizontal" >
 
         </LinearLayout>
-    </HorizontalScrollView>
+    </HorizontalScrollView> -->
+    
+    <com.fima.cardsui.views.CardUI
+        android:id="@+id/cardsview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </RelativeLayout>

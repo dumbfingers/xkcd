@@ -1,15 +1,11 @@
 package com.yeyaxi.android.xkcd;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 import android.app.Activity;
 import android.content.Context;
@@ -21,42 +17,56 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
-import android.view.Gravity;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.LinearLayout.LayoutParams;
 
+import com.fima.cardsui.objects.CardStack;
+import com.fima.cardsui.views.CardUI;
 import com.yeyaxi.android.xkcd.Uitilities.Constants;
 
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
 	private static final int MAX_NUM_OF_LOADING = 5;
-	LinearLayout mGalleryLayout;
+//	LinearLayout mGalleryLayout;
 	// The Thumbnail size of the gallery view, will auto-crop the image to square
-	private int sampleSize = 500;
+//	private int sampleSize = 500;
 	// Frame Border Thickness = 30
-	private int sampleFrameSize = 530; 
+//	private int sampleFrameSize = 530; 
 	// Array to hold the comics' info
-	private ArrayList<HashMap<String, String>> comicList;
+//	private ArrayList<HashMap<String, String>> comicList;
 //	private HashMap<String, String> singleComic;
 //	private String[] urls;
-	private long latestNum;
+//	private long latestNum;
 	
+	private CardUI mCardView;
 	
+	private int cardWidth;
+	private int cardHeight;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		mGalleryLayout = (LinearLayout)findViewById(R.id.galleryLayout);
+		cardWidth = (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 154f, getResources().getDisplayMetrics());
+		cardHeight = (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 258f, getResources().getDisplayMetrics());
+			
+		// init CardView
+		mCardView = (CardUI) findViewById(R.id.cardsview);
+		mCardView.setSwipeable(true);
+		
+		// Add multiple card to stack (if we have that much cards)
+//		CardStack stackPlay = new CardStack();
+//		stackPlay.setTitle("Cards");
+//		mCardView.addStack(stackPlay);
+		
+		new FetchSingleComicData().execute(Constants.XKCD_JSON_URL);
+//		mGalleryLayout = (LinearLayout)findViewById(R.id.galleryLayout);
 		
 		// Begin to parse the RSS
 //		new fetchRSS().execute(Constants.XKCD_RSS_URL);
-		comicList = new ArrayList<HashMap<String,String>>();
+//		comicList = new ArrayList<HashMap<String,String>>();
 //		singleComic = new HashMap<String, String>();
 		
 	}
@@ -68,48 +78,67 @@ public class MainActivity extends Activity {
 	}
 	
 	
-	private View insertPhoto(Bitmap bm){
-
-		GalleryLayout layout = new GalleryLayout(getApplicationContext());
-		layout.setLayoutParams(new LayoutParams(sampleFrameSize, sampleFrameSize));
-		layout.setGravity(Gravity.CENTER);
-
-		ImageView imageView = new ImageView(getApplicationContext());
-		imageView.setLayoutParams(new LayoutParams(sampleSize, sampleSize));
-		imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-		imageView.setImageBitmap(bm);
-
-		layout.addView(imageView);
-		return layout;
-	}
+//	private View insertPhoto(Bitmap bm){
+//
+//		GalleryLayout layout = new GalleryLayout(getApplicationContext());
+//		layout.setLayoutParams(new LayoutParams(sampleFrameSize, sampleFrameSize));
+//		layout.setGravity(Gravity.CENTER);
+//
+//		ImageView imageView = new ImageView(getApplicationContext());
+//		imageView.setLayoutParams(new LayoutParams(sampleSize, sampleSize));
+//		imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+//		imageView.setImageBitmap(bm);
+//
+//		layout.addView(imageView);
+//		return layout;
+//	}
 	
-	public Bitmap decodeSampledBitmapFromUrl(String urlString, String filename, int reqWidth, int reqHeight) {
+	
+	public Bitmap decodeSampledBitmapFromFile(File file, int reqWidth, int reqHeight) {
 		Bitmap bm = null;
 
-		File file;
-		try {
-			file = downloadUrl(urlString, filename);
+// First decode with inJustDecodeBounds=true to check dimensions
+		final BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inJustDecodeBounds = true;
+		BitmapFactory.decodeFile(file.getAbsolutePath(), options);
 
+		// Calculate inSampleSize
+		options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
 
-			// First decode with inJustDecodeBounds=true to check dimensions
-			final BitmapFactory.Options options = new BitmapFactory.Options();
-			options.inJustDecodeBounds = true;
-			BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-
-			// Calculate inSampleSize
-			options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-
-			// Decode bitmap with inSampleSize set
-			options.inJustDecodeBounds = false;
-			bm = BitmapFactory.decodeFile(file.getAbsolutePath(), options); 
-		
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		// Decode bitmap with inSampleSize set
+		options.inJustDecodeBounds = false;
+		bm = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
 		
 		return bm;  
 	}
+	
+//	public Bitmap decodeSampledBitmapFromUrl(String urlString, String filename, int reqWidth, int reqHeight) {
+//		Bitmap bm = null;
+//
+//		File file;
+//		try {
+//			file = downloadUrl(urlString, filename);
+//
+//
+//			// First decode with inJustDecodeBounds=true to check dimensions
+//			final BitmapFactory.Options options = new BitmapFactory.Options();
+//			options.inJustDecodeBounds = true;
+//			BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+//
+//			// Calculate inSampleSize
+//			options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+//
+//			// Decode bitmap with inSampleSize set
+//			options.inJustDecodeBounds = false;
+//			bm = BitmapFactory.decodeFile(file.getAbsolutePath(), options); 
+//		
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		
+//		return bm;  
+//	}
 	
 	public int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
 		// Raw height and width of image
@@ -128,50 +157,31 @@ public class MainActivity extends Activity {
 		return inSampleSize;   
 	}
 	
-	private class FetchComicImage extends AsyncTask<String, Void, ArrayList<Bitmap>> {
-
+	private class FetchSingleComicData extends AsyncTask<String, Void, Comic> {
+	
+//	boolean isMultiple = false;
+		File imgFile = null;
+		
 		@Override
-		protected ArrayList<Bitmap> doInBackground(String... params) {
-			ArrayList<Bitmap> bmList = new ArrayList<Bitmap>();
-			for (int i = 0; i < params.length; i++) {
-				bmList.add(i, decodeSampledBitmapFromUrl(params[i], comicList.get(i).get("num") + ".png", sampleSize, sampleSize));
-			}
-			return bmList;
-		}
-		
-		protected void onPostExecute(ArrayList<Bitmap> bmList) {
-			for (Bitmap bitmap : bmList) {
-				mGalleryLayout.addView(insertPhoto(bitmap));
-			}
-		}
-		
-	}
-
-	private class FetchComicData extends AsyncTask<String, Void, File> {
-		
-		boolean isMultiple = false;
-		@Override
-		protected File doInBackground(String... params) {
-			File f = null;
+		protected Comic doInBackground(String... params) {
+			Comic comic = null;
+			
 			int count = params.length;
-
 			if (isNetworkConnected()) {				
 				try {
-					if (params[0].equals(Constants.XKCD_JSON_URL)) {
-						isMultiple = false;
-						f = downloadUrl(params[0], Constants.CACHE_FILE);					
-						InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-						comicList.add(new JsonParser().readJsonStream(inputStream));
-						latestNum = Long.parseLong(comicList.get(0).get("num"));
-						comicList.clear();
-					} else {
-						for (int i = 0; i < count; i++) {
-							isMultiple = true;
-							f = downloadUrl(params[i], String.valueOf((latestNum - i)) + ".json");
-							InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-							comicList.add(i, new JsonParser().readJsonStream(inputStream));
-						}
-					}
+					URL url = new URL(params[0]);
+					HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+					conn.setReadTimeout(15000); // milliseconds
+					conn.setConnectTimeout(20000); // milliseconds
+					conn.setRequestMethod("GET");
+					conn.setDoInput(true);
+					// Starts the query
+					conn.connect();
+					InputStream stream = conn.getInputStream();
+					comic = new JsonParser().readJsonStream(stream);
+					// Download the image to cache using the image number as file name
+					imgFile = downloadUrl(comic.getImg(), String.valueOf(comic.getNum()));
+					
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e("MainActivity", "Exception while downloading URL contents.");
@@ -180,35 +190,102 @@ public class MainActivity extends Activity {
 				return null;
 			}
 
-			return f;
-		}
-
-		protected void onPostExecute(File file) {
-
-			if (!isMultiple) {
-				String[] urlsOfJson = buildURLsOfJsonToArrayList(latestNum);
-				new FetchComicData().execute(urlsOfJson);
-			} else {
-				String[] urls = new String[MAX_NUM_OF_LOADING];
-				for (int i = 0; i < comicList.size(); i++) {
-					urls[i] = comicList.get(i).get("img");
-				}
-				if (urls.length > 0) {
-					new FetchComicImage().execute(urls);
-				}
-			}
+			return comic;
 		}
 		
+		@Override
+		protected void onPostExecute(Comic comic) {
+			if (comic != null) {
+				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
+				ComicCard card = new ComicCard(comic.getSafe_title(), bm);
+				mCardView.addCard(card);
+				mCardView.refresh();
+			}
+		}
+	
 	}
+	
+//	private class FetchComicImage extends AsyncTask<String, Void, ArrayList<Bitmap>> {
+//
+//		@Override
+//		protected ArrayList<Bitmap> doInBackground(String... params) {
+//			ArrayList<Bitmap> bmList = new ArrayList<Bitmap>();
+//			for (int i = 0; i < params.length; i++) {
+//				bmList.add(i, decodeSampledBitmapFromUrl(params[i], comicList.get(i).get("num") + ".png", sampleSize, sampleSize));
+//			}
+//			return bmList;
+//		}
+//		
+//		protected void onPostExecute(ArrayList<Bitmap> bmList) {
+//			for (Bitmap bitmap : bmList) {
+//				mGalleryLayout.addView(insertPhoto(bitmap));
+//			}
+//		}
+//		
+//	}
+
+//	private class FetchComicData extends AsyncTask<String, Void, File> {
+//		
+//		boolean isMultiple = false;
+//		@Override
+//		protected File doInBackground(String... params) {
+//			File f = null;
+//			int count = params.length;
+//
+//			if (isNetworkConnected()) {				
+//				try {
+//					if (params[0].equals(Constants.XKCD_JSON_URL)) {
+//						isMultiple = false;
+//						f = downloadUrl(params[0], Constants.CACHE_FILE);					
+//						InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+//						comicList.add(new JsonParser().readJsonStream(inputStream));
+//						latestNum = Long.parseLong(comicList.get(0).get("num"));
+//						comicList.clear();
+//					} else {
+//						for (int i = 0; i < count; i++) {
+//							isMultiple = true;
+//							f = downloadUrl(params[i], String.valueOf((latestNum - i)) + ".json");
+//							InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+//							comicList.add(i, new JsonParser().readJsonStream(inputStream));
+//						}
+//					}
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//					Log.e("MainActivity", "Exception while downloading URL contents.");
+//				}
+//			} else {
+//				return null;
+//			}
+//
+//			return f;
+//		}
+//
+//		protected void onPostExecute(File file) {
+//
+//			if (!isMultiple) {
+//				String[] urlsOfJson = buildURLsOfJsonToArrayList(latestNum);
+//				new FetchComicData().execute(urlsOfJson);
+//			} else {
+//				String[] urls = new String[MAX_NUM_OF_LOADING];
+//				for (int i = 0; i < comicList.size(); i++) {
+//					urls[i] = comicList.get(i).get("img");
+//				}
+//				if (urls.length > 0) {
+//					new FetchComicImage().execute(urls);
+//				}
+//			}
+//		}
+//		
+//	}
 	
 	/**
 	 * Download file from given URL
-	 * @param urlString the URL of file to be downloaded
+	 * @param url the URL of file to be downloaded
 	 * @return downloaded file
 	 * @throws IOException
 	 */
-	private File downloadUrl(String urlString, String filename) throws IOException {
-        URL url = new URL(urlString);
+	private File downloadUrl(URL url, String filename) throws IOException {
+//        URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setReadTimeout(15000 /* milliseconds */);
         conn.setConnectTimeout(20000 /* milliseconds */);
@@ -320,7 +397,7 @@ public class MainActivity extends Activity {
 	    // Handle item selection
 	    switch (item.getItemId()) {
 	        case R.id.menu_fetch:
-	    		new FetchComicData().execute(Constants.XKCD_JSON_URL);
+//	    		new FetchComicData().execute(Constants.XKCD_JSON_URL);
 	            return true;
 
 	        default:
