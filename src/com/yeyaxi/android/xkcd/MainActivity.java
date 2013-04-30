@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 
 import android.app.Activity;
 import android.content.Context;
@@ -28,7 +29,7 @@ import com.yeyaxi.android.xkcd.Uitilities.Constants;
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
-	private static final int MAX_NUM_OF_LOADING = 5;
+	private static final int MAX_NUM_OF_LOADING = 10;
 //	LinearLayout mGalleryLayout;
 	// The Thumbnail size of the gallery view, will auto-crop the image to square
 //	private int sampleSize = 500;
@@ -56,18 +57,10 @@ public class MainActivity extends Activity {
 		mCardView = (CardUI) findViewById(R.id.cardsview);
 		mCardView.setSwipeable(true);
 		
-		// Add multiple card to stack (if we have that much cards)
-//		CardStack stackPlay = new CardStack();
-//		stackPlay.setTitle("Cards");
-//		mCardView.addStack(stackPlay);
+
 		
 		new FetchSingleComicData().execute(Constants.XKCD_JSON_URL);
-//		mGalleryLayout = (LinearLayout)findViewById(R.id.galleryLayout);
-		
-		// Begin to parse the RSS
-//		new fetchRSS().execute(Constants.XKCD_RSS_URL);
-//		comicList = new ArrayList<HashMap<String,String>>();
-//		singleComic = new HashMap<String, String>();
+
 		
 	}
 	
@@ -76,22 +69,6 @@ public class MainActivity extends Activity {
 	protected void onResume() {
 		super.onResume();
 	}
-	
-	
-//	private View insertPhoto(Bitmap bm){
-//
-//		GalleryLayout layout = new GalleryLayout(getApplicationContext());
-//		layout.setLayoutParams(new LayoutParams(sampleFrameSize, sampleFrameSize));
-//		layout.setGravity(Gravity.CENTER);
-//
-//		ImageView imageView = new ImageView(getApplicationContext());
-//		imageView.setLayoutParams(new LayoutParams(sampleSize, sampleSize));
-//		imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-//		imageView.setImageBitmap(bm);
-//
-//		layout.addView(imageView);
-//		return layout;
-//	}
 	
 	
 	public Bitmap decodeSampledBitmapFromFile(File file, int reqWidth, int reqHeight) {
@@ -159,14 +136,13 @@ public class MainActivity extends Activity {
 	
 	private class FetchSingleComicData extends AsyncTask<String, Void, Comic> {
 	
-//	boolean isMultiple = false;
 		File imgFile = null;
 		
 		@Override
 		protected Comic doInBackground(String... params) {
 			Comic comic = null;
 			
-			int count = params.length;
+//			int count = params.length;
 			if (isNetworkConnected()) {				
 				try {
 					URL url = new URL(params[0]);
@@ -200,29 +176,64 @@ public class MainActivity extends Activity {
 				ComicCard card = new ComicCard(comic.getSafe_title(), bm);
 				mCardView.addCard(card);
 				mCardView.refresh();
+				new FetchComicsData().execute(buildURLsOfJsonToArrayList(comic.getNum()));
 			}
 		}
 	
 	}
 	
-//	private class FetchComicImage extends AsyncTask<String, Void, ArrayList<Bitmap>> {
-//
-//		@Override
-//		protected ArrayList<Bitmap> doInBackground(String... params) {
-//			ArrayList<Bitmap> bmList = new ArrayList<Bitmap>();
-//			for (int i = 0; i < params.length; i++) {
-//				bmList.add(i, decodeSampledBitmapFromUrl(params[i], comicList.get(i).get("num") + ".png", sampleSize, sampleSize));
-//			}
-//			return bmList;
-//		}
-//		
-//		protected void onPostExecute(ArrayList<Bitmap> bmList) {
-//			for (Bitmap bitmap : bmList) {
-//				mGalleryLayout.addView(insertPhoto(bitmap));
-//			}
-//		}
-//		
-//	}
+	private class FetchComicsData extends AsyncTask<String, Void, ArrayList<Comic>> {
+
+		ArrayList<File> fileList;
+		@Override
+		protected ArrayList<Comic> doInBackground(String... params) {
+			ArrayList<Comic> comicList = null;
+			if (isNetworkConnected()) {
+				fileList = new ArrayList<File>(MAX_NUM_OF_LOADING);
+				comicList = new ArrayList<Comic>(MAX_NUM_OF_LOADING);
+				for (int i = 0; i < params.length; i++) {
+					try {
+						URL url = new URL(params[i]);
+						HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+						conn.setReadTimeout(15000); // milliseconds
+						conn.setConnectTimeout(20000); // milliseconds
+						conn.setRequestMethod("GET");
+						conn.setDoInput(true);
+						// Starts the query
+						conn.connect();
+						InputStream stream = conn.getInputStream();
+						Comic comic = new JsonParser().readJsonStream(stream);
+						// Download the image to cache using the image number as file name
+						fileList.add(downloadUrl(comic.getImg(), String.valueOf(comic.getNum())));
+						comicList.add(comic);
+						
+					} catch (IOException e) {
+						e.printStackTrace();
+						Log.e("MainActivity", "Exception while downloading URL contents.");
+					}
+				}
+			}
+			return comicList;
+		}
+		
+		@Override
+		protected void onPostExecute(ArrayList<Comic> comicList) {
+			// Add multiple card to stack (if we have that much cards)
+//			CardStack stackPlay = new CardStack();
+//			stackPlay.setTitle("Cards");
+			
+			if (comicList != null) {
+				for (int i = 0; i < comicList.size(); i++) {
+					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
+					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm);
+					mCardView.addCardToLastStack(card);
+				}
+			}
+			mCardView.refresh();
+//			mCardView.addStack(stackPlay);
+		}
+		
+	}
 
 //	private class FetchComicData extends AsyncTask<String, Void, File> {
 //		
@@ -377,9 +388,9 @@ public class MainActivity extends Activity {
 //		String[] result = new String[(int)latestNumberOfURL];
 		String[] result = new String[MAX_NUM_OF_LOADING];
 //		for (long i = (latestNumberOfURL - 1); i >= 0; i--) {
-		for (long i = latestNumberOfURL; i > (latestNumberOfURL - MAX_NUM_OF_LOADING); i--) {
+		for (long i = latestNumberOfURL - 1; i >= (latestNumberOfURL - MAX_NUM_OF_LOADING + 1); i--) {
 			String url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
-			result[(int)(latestNumberOfURL - i)] = url;
+			result[(int)(latestNumberOfURL - 1 - i)] = url;
 		}
 		return result;
 		
