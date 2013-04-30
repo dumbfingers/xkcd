@@ -11,11 +11,13 @@ import android.widget.TextView;
 
 
 public class ComicCard extends Card{
-	ImageView iv;
-	Bitmap image;
-	public ComicCard(String title, Bitmap image){
-		super(title);
+	private ImageView iv;
+	private Bitmap image;
+//	private long cardId;
+	public ComicCard(String title, Bitmap image, long cardId){
+		super(title, String.valueOf(cardId));
 		this.image = image;
+//		this.cardId = cardId;
 	}
 
 	@Override
@@ -31,5 +33,12 @@ public class ComicCard extends Card{
 	
 	private void setCardImageBitmap() {
 		iv.setImageBitmap(image);
+	}
+	
+	/**
+	 * Return the comic ID
+	 */
+	public long getCardId() {
+		return Long.parseLong(this.desc);
 	}
 }
