@@ -21,6 +21,9 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.Window;
+import android.widget.ProgressBar;
 
 import com.fima.cardsui.objects.CardStack;
 import com.fima.cardsui.views.CardUI;
@@ -29,7 +32,7 @@ import com.yeyaxi.android.xkcd.Uitilities.Constants;
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
-	private static final int MAX_NUM_OF_LOADING = 10;
+	private static final int MAX_NUM_OF_LOADING = 5;
 //	LinearLayout mGalleryLayout;
 	// The Thumbnail size of the gallery view, will auto-crop the image to square
 //	private int sampleSize = 500;
@@ -42,6 +45,8 @@ public class MainActivity extends Activity {
 //	private long latestNum;
 	
 	private CardUI mCardView;
+	private ProgressBar pgWheel;
+//	private ProgressBar pgBar;
 	
 	private int cardWidth;
 	private int cardHeight;
@@ -49,6 +54,9 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+//		requestWindowFeature(Window.FEATURE_PROGRESS);
+		pgWheel = (ProgressBar)findViewById(R.id.progressBar1);
+//		pgBar = (ProgressBar)findViewById(R.id.progressBar2);
 		
 		cardWidth = (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 154f, getResources().getDisplayMetrics());
 		cardHeight = (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 258f, getResources().getDisplayMetrics());
@@ -57,7 +65,7 @@ public class MainActivity extends Activity {
 		mCardView = (CardUI) findViewById(R.id.cardsview);
 		mCardView.setSwipeable(true);
 		
-
+//		pgBar.setMax(100);
 		
 		new FetchSingleComicData().execute(Constants.XKCD_JSON_URL);
 
@@ -74,7 +82,7 @@ public class MainActivity extends Activity {
 	public Bitmap decodeSampledBitmapFromFile(File file, int reqWidth, int reqHeight) {
 		Bitmap bm = null;
 
-// First decode with inJustDecodeBounds=true to check dimensions
+		// First decode with inJustDecodeBounds=true to check dimensions
 		final BitmapFactory.Options options = new BitmapFactory.Options();
 		options.inJustDecodeBounds = true;
 		BitmapFactory.decodeFile(file.getAbsolutePath(), options);
@@ -88,34 +96,6 @@ public class MainActivity extends Activity {
 		
 		return bm;  
 	}
-	
-//	public Bitmap decodeSampledBitmapFromUrl(String urlString, String filename, int reqWidth, int reqHeight) {
-//		Bitmap bm = null;
-//
-//		File file;
-//		try {
-//			file = downloadUrl(urlString, filename);
-//
-//
-//			// First decode with inJustDecodeBounds=true to check dimensions
-//			final BitmapFactory.Options options = new BitmapFactory.Options();
-//			options.inJustDecodeBounds = true;
-//			BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-//
-//			// Calculate inSampleSize
-//			options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-//
-//			// Decode bitmap with inSampleSize set
-//			options.inJustDecodeBounds = false;
-//			bm = BitmapFactory.decodeFile(file.getAbsolutePath(), options); 
-//		
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		
-//		return bm;  
-//	}
 	
 	public int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
 		// Raw height and width of image
@@ -131,7 +111,7 @@ public class MainActivity extends Activity {
 			}   
 		}
 
-		return inSampleSize;   
+		return inSampleSize;
 	}
 	
 	private class FetchSingleComicData extends AsyncTask<String, Void, Comic> {
@@ -170,6 +150,11 @@ public class MainActivity extends Activity {
 		}
 		
 		@Override
+		protected void onProgressUpdate(Void... v) {
+			
+		}
+		
+		@Override
 		protected void onPostExecute(Comic comic) {
 			if (comic != null) {
 				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
@@ -182,7 +167,7 @@ public class MainActivity extends Activity {
 	
 	}
 	
-	private class FetchComicsData extends AsyncTask<String, Void, ArrayList<Comic>> {
+	private class FetchComicsData extends AsyncTask<String, Integer, ArrayList<Comic>> {
 
 		ArrayList<File> fileList;
 		@Override
@@ -206,7 +191,8 @@ public class MainActivity extends Activity {
 						// Download the image to cache using the image number as file name
 						fileList.add(downloadUrl(comic.getImg(), String.valueOf(comic.getNum())));
 						comicList.add(comic);
-						
+						// Publish progress
+//						publishProgress((int)(i/params.length) * 100);
 					} catch (IOException e) {
 						e.printStackTrace();
 						Log.e("MainActivity", "Exception while downloading URL contents.");
@@ -217,19 +203,28 @@ public class MainActivity extends Activity {
 		}
 		
 		@Override
+		protected void onProgressUpdate(Integer... progress) {
+			pgWheel.bringToFront();
+//			pgBar.setProgress(progress[0]);
+		}
+		
+		@Override
 		protected void onPostExecute(ArrayList<Comic> comicList) {
 			// Add multiple card to stack (if we have that much cards)
 //			CardStack stackPlay = new CardStack();
 //			stackPlay.setTitle("Cards");
-			
+			mCardView.clearCards();
+			pgWheel.setVisibility(View.GONE);
+//			pgBar.setVisibility(View.GONE);
 			if (comicList != null) {
-				for (int i = 0; i < comicList.size(); i++) {
+				for (int i = comicList.size() - 1; i >= 0; i--) {
 					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
 					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm);
 					mCardView.addCardToLastStack(card);
 				}
 			}
 			mCardView.refresh();
+			mCardView.scrollToCard(MAX_NUM_OF_LOADING);
 //			mCardView.addStack(stackPlay);
 		}
 		
@@ -388,9 +383,9 @@ public class MainActivity extends Activity {
 //		String[] result = new String[(int)latestNumberOfURL];
 		String[] result = new String[MAX_NUM_OF_LOADING];
 //		for (long i = (latestNumberOfURL - 1); i >= 0; i--) {
-		for (long i = latestNumberOfURL - 1; i >= (latestNumberOfURL - MAX_NUM_OF_LOADING + 1); i--) {
+		for (long i = latestNumberOfURL; i > (latestNumberOfURL - MAX_NUM_OF_LOADING); i--) {
 			String url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
-			result[(int)(latestNumberOfURL - 1 - i)] = url;
+			result[(int)(latestNumberOfURL - i)] = url;
 		}
 		return result;
 		
