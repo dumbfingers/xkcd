@@ -23,6 +23,9 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ProgressBar;
 
+import com.fima.cardsui.objects.Card;
+import com.fima.cardsui.objects.Card.OnCardSwiped;
+import com.fima.cardsui.objects.CardStack;
 import com.fima.cardsui.views.CardUI;
 import com.yeyaxi.android.xkcd.Uitilities.Constants;
 
@@ -34,7 +37,7 @@ public class MainActivity extends Activity {
 	private CardUI mCardView;
 	private ProgressBar pgWheel;
 //	private ProgressBar pgBar;
-	
+	private CardStack readStack;
 	private int cardWidth;
 	private int cardHeight;
 	@Override
@@ -50,7 +53,7 @@ public class MainActivity extends Activity {
 		// init CardView
 		mCardView = (CardUI) findViewById(R.id.cardsview);
 		mCardView.setSwipeable(true);
-		
+		readStack = new CardStack();
 //		pgBar.setMax(100);
 		
 		new FetchSingleComicData().execute(Constants.XKCD_JSON_URL);
@@ -102,7 +105,7 @@ public class MainActivity extends Activity {
 	
 	private class FetchSingleComicData extends AsyncTask<String, Void, Comic> {
 	
-		File imgFile = null;
+//		File imgFile = null;
 		
 		@Override
 		protected Comic doInBackground(String... params) {
@@ -122,7 +125,7 @@ public class MainActivity extends Activity {
 					InputStream stream = conn.getInputStream();
 					comic = new JsonParser().readJsonStream(stream);
 					// Download the image to cache using the image number as file name
-					imgFile = downloadUrl(comic.getImg(), String.valueOf(comic.getNum()));
+//					imgFile = downloadUrl(comic.getImg(), String.valueOf(comic.getNum()));
 					
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -138,88 +141,97 @@ public class MainActivity extends Activity {
 		@Override
 		protected void onPostExecute(Comic comic) {
 			if (comic != null) {
-				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
-				ComicCard card = new ComicCard(comic.getSafe_title(), bm, comic.getNum());
+//				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
+//				ComicCard card = new ComicCard(comic.getSafe_title(), bm, comic.getNum());
+				ComicCard card = new ComicCard(comic.getSafe_title(), comic.getNum());
+				new ImageDownloader().download(comic.getImg().toString(), card.getImageView());
 				mCardView.addCard(card);
 				mCardView.refresh();
-				new FetchComicsData().execute(buildURLsOfJsonToArrayList(comic.getNum()));
+//				new FetchComicsData().execute(buildURLsOfJsonToArrayList(comic.getNum()));
 			}
 		}
 	
 	}
 	
-	private class FetchComicsData extends AsyncTask<String, Integer, ArrayList<Comic>> {
-
-		ArrayList<File> fileList;
-		@Override
-		protected ArrayList<Comic> doInBackground(String... params) {
-			ArrayList<Comic> comicList = null;
-			if (isNetworkConnected()) {
-				fileList = new ArrayList<File>(MAX_NUM_OF_LOADING);
-				comicList = new ArrayList<Comic>(MAX_NUM_OF_LOADING);
-				for (int i = 0; i < params.length; i++) {
-					try {
-						URL url = new URL(params[i]);
-						HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-						conn.setReadTimeout(15000); // milliseconds
-						conn.setConnectTimeout(20000); // milliseconds
-						conn.setRequestMethod("GET");
-						conn.setDoInput(true);
-						// Starts the query
-						conn.connect();
-						InputStream stream = conn.getInputStream();
-						Comic comic = new JsonParser().readJsonStream(stream);
-						// Download the image to cache using the image number as file name
-						fileList.add(downloadUrl(comic.getImg(), String.valueOf(comic.getNum())));
-						comicList.add(comic);
-						// Publish progress
-//						publishProgress((int)(i/params.length) * 100);
-					} catch (IOException e) {
-						e.printStackTrace();
-						Log.e("MainActivity", "Exception while downloading URL contents.");
-					}
-				}
-			}
-			return comicList;
-		}
-		
-		@Override
-		protected void onProgressUpdate(Integer... progress) {
-			pgWheel.bringToFront();
-//			pgBar.setProgress(progress[0]);
-		}
-		
-		@Override
-		protected void onPostExecute(ArrayList<Comic> comicList) {
-			// Add multiple card to stack (if we have that much cards)
-//			CardStack stackPlay = new CardStack();
-//			stackPlay.setTitle("Cards");
-			mCardView.clearCards();			
-//			pgBar.setVisibility(View.GONE);
-			if (comicList != null) {
-//				for (int i = comicList.size() - 1; i >= 0; i--) {
-				for (int i = 0; i < comicList.size(); i++) {
-					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
-					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm, comicList.get(i).getNum());
-					card.setOnClickListener(new OnClickListener() {
-						
-						@Override
-						public void onClick(View v) {
-							// TODO Auto-generated method stub
-							
-						}
-					});
-//					mCardView.addCardToLastStack(card);
-					mCardView.addCard(card);
-				}
-			}
-			pgWheel.setVisibility(View.GONE);
-			mCardView.refresh();
-			mCardView.scrollToCard(0);
-//			mCardView.addStack(stackPlay);
-		}
-		
-	}
+//	private class FetchComicsData extends AsyncTask<String, Integer, ArrayList<Comic>> {
+//
+//		ArrayList<File> fileList;
+//		@Override
+//		protected ArrayList<Comic> doInBackground(String... params) {
+//			ArrayList<Comic> comicList = null;
+//			if (isNetworkConnected()) {
+//				fileList = new ArrayList<File>(MAX_NUM_OF_LOADING);
+//				comicList = new ArrayList<Comic>(MAX_NUM_OF_LOADING);
+//				for (int i = 0; i < params.length; i++) {
+//					try {
+//						URL url = new URL(params[i]);
+//						HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//						conn.setReadTimeout(15000); // milliseconds
+//						conn.setConnectTimeout(20000); // milliseconds
+//						conn.setRequestMethod("GET");
+//						conn.setDoInput(true);
+//						// Starts the query
+//						conn.connect();
+//						InputStream stream = conn.getInputStream();
+//						Comic comic = new JsonParser().readJsonStream(stream);
+//						// Download the image to cache using the image number as file name
+//						fileList.add(downloadUrl(comic.getImg(), String.valueOf(comic.getNum())));
+//						comicList.add(comic);
+//						// Publish progress
+////						publishProgress((int)(i/params.length) * 100);
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//						Log.e("MainActivity", "Exception while downloading URL contents.");
+//					}
+//				}
+//			}
+//			return comicList;
+//		}
+//		
+//		@Override
+//		protected void onProgressUpdate(Integer... progress) {
+//			pgWheel.bringToFront();
+////			pgBar.setProgress(progress[0]);
+//		}
+//		
+//		@Override
+//		protected void onPostExecute(ArrayList<Comic> comicList) {
+//			// Add multiple card to stack (if we have that much cards)
+////			CardStack stackPlay = new CardStack();
+////			stackPlay.setTitle("Cards");
+//			mCardView.clearCards();			
+////			pgBar.setVisibility(View.GONE);
+//			if (comicList != null) {
+////				for (int i = comicList.size() - 1; i >= 0; i--) {
+//				for (int i = 0; i < comicList.size(); i++) {
+//					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
+//					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm, comicList.get(i).getNum());
+//					card.setOnClickListener(new OnClickListener() {
+//						
+//						@Override
+//						public void onClick(View v) {
+//							// TODO Auto-generated method stub
+//							
+//						}
+//					});
+//					card.setOnCardSwipedListener(new OnCardSwiped() {
+//						
+//						@Override
+//						public void onCardSwiped(Card card, View layout) {
+//							readStack.add(card);
+//						}
+//					});
+////					mCardView.addCardToLastStack(card);
+//					mCardView.addCard(card);
+//				}
+//			}
+//			pgWheel.setVisibility(View.GONE);
+//			mCardView.refresh();
+//			mCardView.scrollToCard(0);
+////			mCardView.addStack(stackPlay);
+//		}
+//		
+//	}
 
 	
 	/**
@@ -228,34 +240,34 @@ public class MainActivity extends Activity {
 	 * @return downloaded file
 	 * @throws IOException
 	 */
-	private File downloadUrl(URL url, String filename) throws IOException {
-//        URL url = new URL(urlString);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setReadTimeout(15000 /* milliseconds */);
-        conn.setConnectTimeout(20000 /* milliseconds */);
-        conn.setRequestMethod("GET");
-        conn.setDoInput(true);
-        // Starts the query
-        conn.connect();
-        InputStream stream = conn.getInputStream();     
-//        File cacheDir = getStorageDir(getApplicationContext());
-        File cacheDir;
-        if (getExternalFilesDir(null) != null) {
-        	cacheDir = getExternalFilesDir(null); // Priorly use External Cache
-        } else {
-        	cacheDir = getFilesDir();// Use Internal cache instead if external one is not available
-        }
-        File cache = new File(cacheDir, filename);
-        FileOutputStream fos = new FileOutputStream(cache);
-        byte[] buffer = new byte[1024];
-        int bufferLength = 0;
-        while ((bufferLength = stream.read(buffer)) > 0) {
-        	fos.write(buffer, 0, bufferLength);
-        }	            
-        fos.flush();
-        fos.close();
-        return cache;
-    }
+//	private File downloadUrl(URL url, String filename) throws IOException {
+////        URL url = new URL(urlString);
+//        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//        conn.setReadTimeout(15000 /* milliseconds */);
+//        conn.setConnectTimeout(20000 /* milliseconds */);
+//        conn.setRequestMethod("GET");
+//        conn.setDoInput(true);
+//        // Starts the query
+//        conn.connect();
+//        InputStream stream = conn.getInputStream();     
+////        File cacheDir = getStorageDir(getApplicationContext());
+//        File cacheDir;
+//        if (getExternalFilesDir(null) != null) {
+//        	cacheDir = getExternalFilesDir(null); // Priorly use External Cache
+//        } else {
+//        	cacheDir = getFilesDir();// Use Internal cache instead if external one is not available
+//        }
+//        File cache = new File(cacheDir, filename);
+//        FileOutputStream fos = new FileOutputStream(cache);
+//        byte[] buffer = new byte[1024];
+//        int bufferLength = 0;
+//        while ((bufferLength = stream.read(buffer)) > 0) {
+//        	fos.write(buffer, 0, bufferLength);
+//        }	            
+//        fos.flush();
+//        fos.close();
+//        return cache;
+//    }
 	
 	/**
 	 * Check network connectivity.
