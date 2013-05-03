@@ -12,11 +12,11 @@ import android.widget.TextView;
 
 public class ComicCard extends Card{
 	private ImageView iv;
-//	private Bitmap image;
+	private Bitmap image;
 //	private long cardId;
-	public ComicCard(String title, long cardId){
+	public ComicCard(String title, Bitmap image, long cardId){
 		super(title, String.valueOf(cardId));
-//		this.image = image;
+		this.image = image;
 //		this.cardId = cardId;
 	}
 
@@ -27,16 +27,14 @@ public class ComicCard extends Card{
 		((TextView) view.findViewById(R.id.title)).setText(title);
 //		((ImageView) view.findViewById(R.id.imageView1)).setImageBitmap(image);
 		iv = (ImageView) view.findViewById(R.id.imageView1);
-//		setCardImageBitmap();
+		setCardImageBitmap();
 		return view;
 	}
 	
-//	private void setCardImageBitmap() {
-//		iv.setImageBitmap(image);
-//	}
-	public ImageView getImageView() {
-		return this.iv;
+	private void setCardImageBitmap() {
+		iv.setImageBitmap(image);
 	}
+	
 	/**
 	 * Return the comic ID
 	 */
