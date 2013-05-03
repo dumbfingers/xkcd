@@ -19,17 +19,30 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
+import android.view.Window;
 import android.widget.ProgressBar;
 
+import com.fima.cardsui.objects.CardStack;
 import com.fima.cardsui.views.CardUI;
 import com.yeyaxi.android.xkcd.Uitilities.Constants;
 
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
-	private static final int MAX_NUM_OF_LOADING = 10;
+	private static final int MAX_NUM_OF_LOADING = 5;
+//	LinearLayout mGalleryLayout;
+	// The Thumbnail size of the gallery view, will auto-crop the image to square
+//	private int sampleSize = 500;
+	// Frame Border Thickness = 30
+//	private int sampleFrameSize = 530; 
+	// Array to hold the comics' info
+//	private ArrayList<HashMap<String, String>> comicList;
+//	private HashMap<String, String> singleComic;
+//	private String[] urls;
+//	private long latestNum;
 	
 	private CardUI mCardView;
 	private ProgressBar pgWheel;
@@ -41,6 +54,7 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+//		requestWindowFeature(Window.FEATURE_PROGRESS);
 		pgWheel = (ProgressBar)findViewById(R.id.progressBar1);
 //		pgBar = (ProgressBar)findViewById(R.id.progressBar2);
 		
@@ -134,12 +148,17 @@ public class MainActivity extends Activity {
 
 			return comic;
 		}
-
+		
+		@Override
+		protected void onProgressUpdate(Void... v) {
+			
+		}
+		
 		@Override
 		protected void onPostExecute(Comic comic) {
 			if (comic != null) {
 				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
-				ComicCard card = new ComicCard(comic.getSafe_title(), bm, comic.getNum());
+				ComicCard card = new ComicCard(comic.getSafe_title(), bm);
 				mCardView.addCard(card);
 				mCardView.refresh();
 				new FetchComicsData().execute(buildURLsOfJsonToArrayList(comic.getNum()));
@@ -194,33 +213,76 @@ public class MainActivity extends Activity {
 			// Add multiple card to stack (if we have that much cards)
 //			CardStack stackPlay = new CardStack();
 //			stackPlay.setTitle("Cards");
-			mCardView.clearCards();			
+			mCardView.clearCards();
+			pgWheel.setVisibility(View.GONE);
 //			pgBar.setVisibility(View.GONE);
 			if (comicList != null) {
-//				for (int i = comicList.size() - 1; i >= 0; i--) {
-				for (int i = 0; i < comicList.size(); i++) {
+				for (int i = comicList.size() - 1; i >= 0; i--) {
 					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
-					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm, comicList.get(i).getNum());
-					card.setOnClickListener(new OnClickListener() {
-						
-						@Override
-						public void onClick(View v) {
-							// TODO Auto-generated method stub
-							
-						}
-					});
-//					mCardView.addCardToLastStack(card);
-					mCardView.addCard(card);
+					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm);
+					mCardView.addCardToLastStack(card);
 				}
 			}
-			pgWheel.setVisibility(View.GONE);
 			mCardView.refresh();
-			mCardView.scrollToCard(0);
+			mCardView.scrollToCard(MAX_NUM_OF_LOADING);
 //			mCardView.addStack(stackPlay);
 		}
 		
 	}
 
+//	private class FetchComicData extends AsyncTask<String, Void, File> {
+//		
+//		boolean isMultiple = false;
+//		@Override
+//		protected File doInBackground(String... params) {
+//			File f = null;
+//			int count = params.length;
+//
+//			if (isNetworkConnected()) {				
+//				try {
+//					if (params[0].equals(Constants.XKCD_JSON_URL)) {
+//						isMultiple = false;
+//						f = downloadUrl(params[0], Constants.CACHE_FILE);					
+//						InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+//						comicList.add(new JsonParser().readJsonStream(inputStream));
+//						latestNum = Long.parseLong(comicList.get(0).get("num"));
+//						comicList.clear();
+//					} else {
+//						for (int i = 0; i < count; i++) {
+//							isMultiple = true;
+//							f = downloadUrl(params[i], String.valueOf((latestNum - i)) + ".json");
+//							InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
+//							comicList.add(i, new JsonParser().readJsonStream(inputStream));
+//						}
+//					}
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//					Log.e("MainActivity", "Exception while downloading URL contents.");
+//				}
+//			} else {
+//				return null;
+//			}
+//
+//			return f;
+//		}
+//
+//		protected void onPostExecute(File file) {
+//
+//			if (!isMultiple) {
+//				String[] urlsOfJson = buildURLsOfJsonToArrayList(latestNum);
+//				new FetchComicData().execute(urlsOfJson);
+//			} else {
+//				String[] urls = new String[MAX_NUM_OF_LOADING];
+//				for (int i = 0; i < comicList.size(); i++) {
+//					urls[i] = comicList.get(i).get("img");
+//				}
+//				if (urls.length > 0) {
+//					new FetchComicImage().execute(urls);
+//				}
+//			}
+//		}
+//		
+//	}
 	
 	/**
 	 * Download file from given URL
@@ -329,24 +391,24 @@ public class MainActivity extends Activity {
 		
 	}
 	
-//	@Override
-//	public boolean onCreateOptionsMenu(Menu menu) {
-//		// Inflate the menu; this adds items to the action bar if it is present.
-//		getMenuInflater().inflate(R.menu.activity_main, menu);
-//		return true;
-//	}
-//	
-//	@Override
-//	public boolean onOptionsItemSelected(MenuItem item) {
-//	    // Handle item selection
-//	    switch (item.getItemId()) {
-//	        case R.id.menu_fetch:
-////	    		new FetchComicData().execute(Constants.XKCD_JSON_URL);
-//	            return true;
-//
-//	        default:
-//	            return super.onOptionsItemSelected(item);
-//	    }
-//	}
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.activity_main, menu);
+		return true;
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    // Handle item selection
+	    switch (item.getItemId()) {
+	        case R.id.menu_fetch:
+//	    		new FetchComicData().execute(Constants.XKCD_JSON_URL);
+	            return true;
+
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
+	}
 
 }
