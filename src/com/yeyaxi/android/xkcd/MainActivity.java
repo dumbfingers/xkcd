@@ -22,34 +22,30 @@ import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.ProgressBar;
 
-import com.fima.cardsui.objects.CardStack;
 import com.fima.cardsui.views.CardUI;
+import com.nostra13.universalimageloader.core.DisplayImageOptions;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
+import com.nostra13.universalimageloader.core.assist.FailReason;
+import com.nostra13.universalimageloader.core.assist.ImageLoadingListener;
 import com.yeyaxi.android.xkcd.Uitilities.Constants;
 
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
-	private static final int MAX_NUM_OF_LOADING = 5;
-//	LinearLayout mGalleryLayout;
-	// The Thumbnail size of the gallery view, will auto-crop the image to square
-//	private int sampleSize = 500;
-	// Frame Border Thickness = 30
-//	private int sampleFrameSize = 530; 
-	// Array to hold the comics' info
-//	private ArrayList<HashMap<String, String>> comicList;
-//	private HashMap<String, String> singleComic;
-//	private String[] urls;
-//	private long latestNum;
-	
+	// If set this MAX NUM to 0, means unlimited loading
+	private static int MAX_NUM_OF_LOADING = 0;
 	private CardUI mCardView;
 	private ProgressBar pgWheel;
 //	private ProgressBar pgBar;
 	
 	private int cardWidth;
 	private int cardHeight;
+	
+	DisplayImageOptions options;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -65,9 +61,16 @@ public class MainActivity extends Activity {
 		mCardView = (CardUI) findViewById(R.id.cardsview);
 		mCardView.setSwipeable(true);
 		
-//		pgBar.setMax(100);
+		ImageLoaderConfiguration config = new ImageLoaderConfiguration.Builder(getApplicationContext())
+				.build();
+		ImageLoader.getInstance().init(config);
+		options = new DisplayImageOptions.Builder()
+				.cacheOnDisc(true)
+				.build();
 		
-		new FetchSingleComicData().execute(Constants.XKCD_JSON_URL);
+//		new FetchSingleComicData().execute(Constants.XKCD_JSON_URL);
+		fetchSingleComicJson.execute(Constants.XKCD_JSON_URL);
+		
 
 		
 	}
@@ -114,10 +117,8 @@ public class MainActivity extends Activity {
 		return inSampleSize;
 	}
 	
-	private class FetchSingleComicData extends AsyncTask<String, Void, Comic> {
-	
-		File imgFile = null;
-		
+	AsyncTask<String, Void, Comic> fetchSingleComicJson = new AsyncTask<String, Void, Comic>() {
+
 		@Override
 		protected Comic doInBackground(String... params) {
 			Comic comic = null;
@@ -135,9 +136,6 @@ public class MainActivity extends Activity {
 					conn.connect();
 					InputStream stream = conn.getInputStream();
 					comic = new JsonParser().readJsonStream(stream);
-					// Download the image to cache using the image number as file name
-					imgFile = downloadUrl(comic.getImg(), String.valueOf(comic.getNum()));
-					
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e("MainActivity", "Exception while downloading URL contents.");
@@ -150,29 +148,22 @@ public class MainActivity extends Activity {
 		}
 		
 		@Override
-		protected void onProgressUpdate(Void... v) {
-			
-		}
-		
-		@Override
 		protected void onPostExecute(Comic comic) {
 			if (comic != null) {
-				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
-				ComicCard card = new ComicCard(comic.getSafe_title(), bm);
-				mCardView.addCard(card);
-				mCardView.refresh();
-				new FetchComicsData().execute(buildURLsOfJsonToArrayList(comic.getNum()));
+				ArrayList<String> urlList = buildURLsOfJsonToArrayList(comic.getNum());
+				String[] urlArray = new String[urlList.size()];
+				fetchComic.execute(urlList.toArray(urlArray));
 			}
 		}
+		
+	};
 	
-	}
-	
-	private class FetchComicsData extends AsyncTask<String, Integer, ArrayList<Comic>> {
+	AsyncTask<String, Void, ArrayList<Comic>> fetchComic = new AsyncTask<String, Void, ArrayList<Comic>>() {
 
-		ArrayList<File> fileList;
 		@Override
 		protected ArrayList<Comic> doInBackground(String... params) {
 			ArrayList<Comic> comicList = null;
+			ArrayList<File> fileList = null;
 			if (isNetworkConnected()) {
 				fileList = new ArrayList<File>(MAX_NUM_OF_LOADING);
 				comicList = new ArrayList<Comic>(MAX_NUM_OF_LOADING);
@@ -203,58 +194,66 @@ public class MainActivity extends Activity {
 		}
 		
 		@Override
-		protected void onProgressUpdate(Integer... progress) {
-			pgWheel.bringToFront();
-//			pgBar.setProgress(progress[0]);
-		}
-		
-		@Override
 		protected void onPostExecute(ArrayList<Comic> comicList) {
-			// Add multiple card to stack (if we have that much cards)
-//			CardStack stackPlay = new CardStack();
-//			stackPlay.setTitle("Cards");
-			mCardView.clearCards();
-			pgWheel.setVisibility(View.GONE);
-//			pgBar.setVisibility(View.GONE);
 			if (comicList != null) {
-				for (int i = comicList.size() - 1; i >= 0; i--) {
-					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
-					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm);
-					mCardView.addCardToLastStack(card);
+				for (Comic comic : comicList) {
+					final String title = comic.getSafe_title();
+					ImageLoader.getInstance().loadImage(comic.getImg().toString(), options, new ImageLoadingListener() {
+						
+						@Override
+						public void onLoadingStarted(String arg0, View arg1) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void onLoadingFailed(String arg0, View arg1, FailReason arg2) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void onLoadingComplete(String arg0, View arg1, Bitmap bm) {
+							ComicCard card = new ComicCard(title, bm);
+							mCardView.addCardToLastStack(card, true);
+						}
+						
+						@Override
+						public void onLoadingCancelled(String arg0, View arg1) {
+							// TODO Auto-generated method stub
+							
+						}
+					}); 
 				}
 			}
-			mCardView.refresh();
-			mCardView.scrollToCard(MAX_NUM_OF_LOADING);
-//			mCardView.addStack(stackPlay);
 		}
 		
-	}
-
-//	private class FetchComicData extends AsyncTask<String, Void, File> {
+	};
+	
+//	private class FetchSingleComicData extends AsyncTask<String, Void, Comic> {
+//	
+//		File imgFile = null;
 //		
-//		boolean isMultiple = false;
 //		@Override
-//		protected File doInBackground(String... params) {
-//			File f = null;
-//			int count = params.length;
-//
+//		protected Comic doInBackground(String... params) {
+//			Comic comic = null;
+//			
+////			int count = params.length;
 //			if (isNetworkConnected()) {				
 //				try {
-//					if (params[0].equals(Constants.XKCD_JSON_URL)) {
-//						isMultiple = false;
-//						f = downloadUrl(params[0], Constants.CACHE_FILE);					
-//						InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-//						comicList.add(new JsonParser().readJsonStream(inputStream));
-//						latestNum = Long.parseLong(comicList.get(0).get("num"));
-//						comicList.clear();
-//					} else {
-//						for (int i = 0; i < count; i++) {
-//							isMultiple = true;
-//							f = downloadUrl(params[i], String.valueOf((latestNum - i)) + ".json");
-//							InputStream inputStream = new BufferedInputStream(new FileInputStream(f));
-//							comicList.add(i, new JsonParser().readJsonStream(inputStream));
-//						}
-//					}
+//					URL url = new URL(params[0]);
+//					HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//					conn.setReadTimeout(15000); // milliseconds
+//					conn.setConnectTimeout(20000); // milliseconds
+//					conn.setRequestMethod("GET");
+//					conn.setDoInput(true);
+//					// Starts the query
+//					conn.connect();
+//					InputStream stream = conn.getInputStream();
+//					comic = new JsonParser().readJsonStream(stream);
+//					// Download the image to cache using the image number as file name
+//					imgFile = downloadUrl(comic.getImg(), String.valueOf(comic.getNum()));
+//					
 //				} catch (IOException e) {
 //					e.printStackTrace();
 //					Log.e("MainActivity", "Exception while downloading URL contents.");
@@ -263,23 +262,87 @@ public class MainActivity extends Activity {
 //				return null;
 //			}
 //
-//			return f;
+//			return comic;
 //		}
+//		
+//		@Override
+//		protected void onProgressUpdate(Void... v) {
+//			
+//		}
+//		
+//		@Override
+//		protected void onPostExecute(Comic comic) {
+//			if (comic != null) {
+//				Bitmap bm = decodeSampledBitmapFromFile(imgFile, cardWidth, cardHeight);
+//				ComicCard card = new ComicCard(comic.getSafe_title(), bm);
+//				mCardView.addCard(card);
+//				mCardView.refresh();
+//				new FetchComicsData().execute(buildURLsOfJsonToArrayList(comic.getNum()));
+//			}
+//		}
+//	
+//	}
+//	
+//	
+//	private class FetchComicsData extends AsyncTask<String, Integer, ArrayList<Comic>> {
 //
-//		protected void onPostExecute(File file) {
-//
-//			if (!isMultiple) {
-//				String[] urlsOfJson = buildURLsOfJsonToArrayList(latestNum);
-//				new FetchComicData().execute(urlsOfJson);
-//			} else {
-//				String[] urls = new String[MAX_NUM_OF_LOADING];
-//				for (int i = 0; i < comicList.size(); i++) {
-//					urls[i] = comicList.get(i).get("img");
-//				}
-//				if (urls.length > 0) {
-//					new FetchComicImage().execute(urls);
+//		ArrayList<File> fileList;
+//		@Override
+//		protected ArrayList<Comic> doInBackground(String... params) {
+//			ArrayList<Comic> comicList = null;
+//			if (isNetworkConnected()) {
+//				fileList = new ArrayList<File>(MAX_NUM_OF_LOADING);
+//				comicList = new ArrayList<Comic>(MAX_NUM_OF_LOADING);
+//				for (int i = 0; i < params.length; i++) {
+//					try {
+//						URL url = new URL(params[i]);
+//						HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//						conn.setReadTimeout(15000); // milliseconds
+//						conn.setConnectTimeout(20000); // milliseconds
+//						conn.setRequestMethod("GET");
+//						conn.setDoInput(true);
+//						// Starts the query
+//						conn.connect();
+//						InputStream stream = conn.getInputStream();
+//						Comic comic = new JsonParser().readJsonStream(stream);
+//						// Download the image to cache using the image number as file name
+//						fileList.add(downloadUrl(comic.getImg(), String.valueOf(comic.getNum())));
+//						comicList.add(comic);
+//						// Publish progress
+////						publishProgress((int)(i/params.length) * 100);
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//						Log.e("MainActivity", "Exception while downloading URL contents.");
+//					}
 //				}
 //			}
+//			return comicList;
+//		}
+//		
+//		@Override
+//		protected void onProgressUpdate(Integer... progress) {
+//			pgWheel.bringToFront();
+////			pgBar.setProgress(progress[0]);
+//		}
+//		
+//		@Override
+//		protected void onPostExecute(ArrayList<Comic> comicList) {
+//			// Add multiple card to stack (if we have that much cards)
+////			CardStack stackPlay = new CardStack();
+////			stackPlay.setTitle("Cards");
+//			mCardView.clearCards();
+//			pgWheel.setVisibility(View.GONE);
+////			pgBar.setVisibility(View.GONE);
+//			if (comicList != null) {
+//				for (int i = comicList.size() - 1; i >= 0; i--) {
+//					Bitmap bm = decodeSampledBitmapFromFile(fileList.get(i), cardWidth, cardHeight);
+//					ComicCard card = new ComicCard(comicList.get(i).getSafe_title(), bm);
+//					mCardView.addCardToLastStack(card);
+//				}
+//			}
+//			mCardView.refresh();
+//			mCardView.scrollToCard(MAX_NUM_OF_LOADING);
+////			mCardView.addStack(stackPlay);
 //		}
 //		
 //	}
@@ -301,13 +364,7 @@ public class MainActivity extends Activity {
         conn.connect();
         InputStream stream = conn.getInputStream();     
 //        File cacheDir = getStorageDir(getApplicationContext());
-        File cacheDir;
-        if (getExternalFilesDir(null) != null) {
-        	cacheDir = getExternalFilesDir(null); // Priorly use External Cache
-        } else {
-        	cacheDir = getFilesDir();// Use Internal cache instead if external one is not available
-        }
-        File cache = new File(cacheDir, filename);
+        File cache = new File(getCacheDir(), filename);
         FileOutputStream fos = new FileOutputStream(cache);
         byte[] buffer = new byte[1024];
         int bufferLength = 0;
@@ -377,18 +434,36 @@ public class MainActivity extends Activity {
 	 * @param latestNumberOfURL is the latest number of comics, which is used to build the JSON URLs
 	 * @return ArrayList contains the URLs of Json
 	 */
-	public String[] buildURLsOfJsonToArrayList (long latestNumberOfURL) {
-//		String url = null;
-//		ArrayList<String> result = new ArrayList<String>();
-//		String[] result = new String[(int)latestNumberOfURL];
-		String[] result = new String[MAX_NUM_OF_LOADING];
-//		for (long i = (latestNumberOfURL - 1); i >= 0; i--) {
-		for (long i = latestNumberOfURL; i > (latestNumberOfURL - MAX_NUM_OF_LOADING); i--) {
-			String url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
-			result[(int)(latestNumberOfURL - i)] = url;
+	public ArrayList<String> buildURLsOfJsonToArrayList (long latestNumberOfURL) {
+//		String[] result = new String[MAX_NUM_OF_LOADING];
+		
+		ArrayList<String> result = new ArrayList<String>();
+		
+		if (MAX_NUM_OF_LOADING == 0) {
+			for (long i = latestNumberOfURL; i >= 0; i--) {
+				String url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
+//				result[(int)(latestNumberOfURL - i)] = url;
+				result.add(url);
+			}
+		} else {
+			for (long i = latestNumberOfURL; i >= (latestNumberOfURL - MAX_NUM_OF_LOADING); i--) {
+				String url = "http://xkcd.com/" + Long.toString(i) + "/info.0.json";
+//				result[(int)(latestNumberOfURL - i)] = url;
+				result.add(url);
+			}
 		}
 		return result;
 		
+	}
+	
+	public File getCacheDir() {
+		File cacheDir;
+        if (getExternalFilesDir(null) != null) {
+        	cacheDir = getExternalFilesDir(null); // Priorly use External Cache
+        } else {
+        	cacheDir = getFilesDir();// Use Internal cache instead if external one is not available
+        }
+        return cacheDir;
 	}
 	
 	@Override
@@ -410,5 +485,7 @@ public class MainActivity extends Activity {
 	            return super.onOptionsItemSelected(item);
 	    }
 	}
+	
+	
 
 }
